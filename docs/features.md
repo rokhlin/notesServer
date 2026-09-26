@@ -1,6 +1,6 @@
 # Comprehensive System Implementation Plan: Notes Alltogether
 
-**Document Version:** 1.0.0  
+**Document Version:** 1.1.0  
 **Target Systems:** `notesClientApp` (Kotlin Multiplatform / Compose Multiplatform) & `notesServer` (Kotlin / Ktor Server)  
 **Reference Design:** Obsidian (Text Editor UI/UX) & Samsung Notes (Handwritten Canvas Engine)  
 **Governing Documents:** `commonFiles/features.md`, `commonFiles/ui_ux_handwritten_notes.md`, `commonFiles/ui_ux_text_editor.md`
@@ -9,16 +9,16 @@
 
 ## 1. Executive System Architecture Overview
 
-The **Notes Alltogether** platform is a modern, cross-platform knowledge management and note-taking ecosystem supporting Android, iOS, Desktop (JVM), and Web (Wasm), backed by a reactive Ktor microservice.
+The **Notes Alltogether** platform is a modern, cross-platform knowledge management and note-taking ecosystem targeting Android (API 28+, optimized for tablets, foldables, and phones), Desktop (JVM 17/21), and iOS (16.0+), backed by a reactive Ktor microservice.
 
 ```mermaid
 graph TD
     subgraph Client ["Client Architecture (Compose Multiplatform)"]
         UI["UI Layer: Adaptive Compose Multiplatform\n(Phones, Tablets, Foldables, Desktop)"]
-        TE["Text Editor Module\n(Obsidian UX: Source, Live Preview, Reading)"]
-        HW["Handwritten Engine\n(Samsung Notes UX: Vector/Raster Layers, .cmn)"]
-        SEC["Security & E2EE Vault\n(Argon2 / AES-GCM-256)"]
-        STORE["Local Storage & Cache\n(Room/SQLDelight, File Storage, TextBundle)"]
+        TE["Text Editor Module\n(Obsidian UX: Pluggable Live Preview, Reading, Source)"]
+        HW["Handwritten Engine\n(Samsung Notes UX: Continuous Roll, Skia Splines, .cmn)"]
+        SEC["Security & E2EE Vault\n(Argon2id / AES-GCM-256 / BIP-39 / Biometrics)"]
+        STORE["Local Storage & Sandbox Cache\n(Lightweight JSON Index, Okio, TextBundle, .cmn)"]
         SYNC_C["Client Sync & Collab Engine\n(REST Client + WebSocket Pipeline)"]
         
         UI --> TE
@@ -31,19 +31,20 @@ graph TD
     end
 
     subgraph Server ["Server Architecture (Ktor JVM)"]
-        AUTH["Auth & Account Service\n(JWT, OAuth2, RBAC)"]
-        SYNC_S["Sync & Versioning Engine\n(Delta Sync, Conflict Resolution)"]
-        WS_COLLAB["Real-Time Collab Gateway\n(WebSockets / Event Bus)"]
-        STORAGE_S["Encrypted Storage Service\n(PostgreSQL + Object Storage / S3)"]
-        EXPORT_S["Headless Export/Import Worker\n(PDF/DOCX Generator)"]
+        AUTH["Auth & Account Service\n(JWT, BCrypt, OAuth2 Architecture)"]
+        SYNC_S["Sync & Versioning Engine\n(Delta Sync, LWW + Revision History, Recycle Bin)"]
+        WS_COLLAB["Real-Time Collab Gateway\n(WebSockets / Exclusive Canvas Lock / Delta Broadcast)"]
+        STORAGE_S["Persistence & Object Storage\n(PostgreSQL + Exposed + AWS S3 / MinIO)"]
+        EXPORT_S["Headless Export/Import Worker\n(OpenPDF / Apache POI DOCX Generator)"]
         
         SYNC_S --> STORAGE_S
         WS_COLLAB --> STORAGE_S
         AUTH --> SYNC_S
         AUTH --> WS_COLLAB
+        EXPORT_S --> STORAGE_S
     end
 
-    SYNC_C <==>|"HTTPS (Delta REST API)"| SYNC_S
+    SYNC_C <==>|"HTTPS (Delta REST API, max 25MB attachments)"| SYNC_S
     SYNC_C <==>|"Secure WebSockets (WSS)"| WS_COLLAB
 ```
 
@@ -53,71 +54,85 @@ graph TD
 
 ### 2.1 Text Editor Module (Obsidian Reference)
 * **Visual Workspace Structure:**
-  * **Tabbed Interface:** Multi-tab document management on wide viewports (desktop, tablets, unfolded foldables).
+  * **Navigation Architecture:** Tabs omitted across all screen sizes (per Q6 decision); uses a unified single active note canvas with a fast modal Quick Switcher (`Cmd+O`/`Ctrl+O`) and collapsible Left Sidebar.
   * **Left Ribbon:** High-priority quick actions (New Note, Quick Switcher, Daily Notes, Vault Settings).
-  * **Collapsible Left Sidebar:** Hierarchical file explorer, search with regex/tags, bookmarked notes.
-  * **Collapsible Right Sidebar:** Document metadata, auto-generated outline (Table of Contents based on H1-H6 headers), interactive tags list.
-  * **Customizable Action Toolbar:** Persistent pin/overflow mechanism for formatting tools (bold, italic, strikethrough, code block, quote, tables, callouts).
-* **Three Editing Modes:**
+  * **Collapsible Left Sidebar:** Hierarchical file explorer, search with regex/tags, bookmarked notes, and collapsible nested tags tree.
+  * **Collapsible Right Sidebar:** Document metadata, auto-generated outline (Table of Contents based on H1-H6 headers), and document properties.
+  * **Customizable Action Toolbar:** Persistent pin/overflow mechanism for formatting tools; customized states stored in DataStore preferences locally with optional server profile sync.
+* **Three Editing Modes & Pluggable Engine Architecture:**
   1. *Source Mode:* Raw Markdown syntax editing with syntax highlighting and line numbers.
-  2. *Live Preview Mode:* Inline WYSIWYG rendering with clickable checkboxes and formatted styling while typing.
+  2. *Live Preview Mode:* Inline WYSIWYG rendering. Built with a pluggable engine architecture (per Q5 decision):
+     - **Default Plugin:** `org.jetbrains.markdown` AST parser with `multiplatform-markdown-renderer`.
+     - **Alternative Plugin:** `com.halilibo.compose-richtext` for rich-text component editing.
+     - Selectable by the user in app settings.
   3. *Reading Mode:* Immutable, read-only rendered document.
+* **Internal Linking & Tags:**
+  * Support for both standard Markdown links `[text](url)` and Obsidian-style wikilinks `[[Note Name]]` with auto-complete popup (per Q9).
+  * Hierarchical nested tags support (e.g., `#project/phase1/todo`) with tree view in sidebar (per Q8).
 * **Media & Attachment Architecture:**
-  * Embedded images automatically routed to `.attachments/` or `assets/` relative directories.
+  * Embedded images automatically saved into `.attachments/` relative folder within local sandbox storage.
   * Drag-and-drop, clipboard paste (`Ctrl+V`/`Cmd+V`), and native gallery/file picker integrations.
   * Seamless on-the-fly packing into `TextBundle` or `.cmn` containers when shared or exported.
 
 ### 2.2 Handwritten Notes Module (Samsung Notes Reference)
 * **Canvas Core:**
   * High-performance Compose Multiplatform `Canvas` backed by Skia graphics rendering.
-  * Infinite or multi-page continuous vertical canvas with pinch-to-zoom, two-finger pan, and rotation.
+  * **Layout Bounds:** Vertically continuous scrolling page roll with visual page break dividers (per Q14).
+  * Zoom and pan gestures via multi-touch.
   * Seamless input dispatch differentiating stylus pressure/tilt and finger interactions.
+  * Dynamic stroke thickness modulation based on stylus hardware pressure and tilt sensors on supported hardware (S-Pen, Apple Pencil) with fallback to uniform stroke on touch/mouse (per Q12).
   * *Explicit Constraint:* Programmatic palm rejection is omitted from initial implementation.
 * **Drawing Instruments & Toolset:**
   * Pens: Ballpoint Pen, Fountain Pen, Pencil, Calligraphy Brush, and Highlighter (semi-transparent blending).
   * Vector Eraser: Path/stroke-level erasing (removing individual vectors) and partial raster erasing.
-  * Geometric Shape Recognizer/Snapping: Rectangles, Circles/Ovals, Straight Lines, and Wavy Lines.
+  * Spline Smoothing: Catmull-Rom spline interpolation for smooth, natural ink lines (per Q10).
+  * Geometric Shapes: Both a dedicated toolbar shape tool + auto-snapping gesture (draw roughly and hold for 0.5s to snap to perfect shape) (per Q13).
   * Color Picker & Presets: Hex input, palette swatches, opacity, and customizable stroke thickness.
 * **Layer Hierarchy:**
   * Multi-layer stacking: background grid/paper styles (lined, dotted, grid, blank), imported raster image layers, and foreground vector drawing layers.
   * Independent layer visibility toggling, reordering, opacity adjustments, and deletion.
-* **Compound Package Format (`.cmn` - Custom Multi-layer Note):**
+* **Compound Package Format (`.cmn` - Custom Multi-layer Note) & SVG Export:**
   * Bundled ZIP-compatible container with custom header magic bytes (`CMN\x01`) and distinct MIME type.
   * Contains `manifest.json` detailing schema version, layers, bounding boxes, Z-indices, and metadata.
-  * Vector strokes serialized as compact binary coordinates or SVG path definitions.
+  * Vector strokes serialized as compact JSON coordinate arrays (points, pressure, timestamp, tool type, color, stroke width) via `kotlinx.serialization` (per Q11).
   * High-resolution raster images preserved natively as PNG/JPEG.
+  * Built-in vector export from `.cmn` container to standardized SVG (per Q11).
 
 ### 2.3 Local Storage & Serialization
-* **Multiplatform Database:** Offline-first caching with SQLDelight or Room KMP for metadata, search indexes, tag directories, and sync timestamps.
-* **File System Layer:** Platform-specific file abstractions (Android Scoped Storage / Documents, iOS Application Sandbox, Desktop User Data, Wasm OPFS/IndexedDB).
-* **Format Parsers & Bundlers:** Built-in streaming ZIP packager/unpacker for `.cmn` and `TextBundle` formats.
+* **Lightweight Storage Model:** App-managed sandboxed storage using a **custom lightweight JSON file index** (`notes_index.json`) via `kotlinx.serialization` and `okio` (per Q19, Q29).
+* **Embedded SQL DBs (Room/SQLDelight):** Replaced by lightweight JSON file index to ensure zero native binary friction, maximum performance, and clean filesystem portability.
+* **Preferences Storage:** `androidx.datastore:datastore-preferences-core` for application settings, toolbar customization, and sync preferences.
 
 ### 2.4 Cloud Synchronization & Conflict Resolution
-* **Dual Sync Modes:**
-  * *Automatic Sync:* Configurable intervals (e.g., 30s, 2m, on app backgrounding, on network reconnect).
-  * *Manual Sync:* Immediate on-demand push/pull via UI action button.
-* **Conflict Resolution Strategy:**
-  * Three-way merge algorithm with deterministic vector clocks or last-write-wins (LWW) with revision history.
-  * Conflicted forks saved alongside the original note (`Note Title (Conflict - Device - Timestamp).md`).
+* **Sync Triggers:** Hybrid model (per Q20):
+  * Debounce after editing (e.g. 5 seconds after typing stops).
+  * On app lifecycle events (app backgrounding).
+  * Manual sync trigger (button / pull-to-refresh).
+  * Configurable periodic timer in the settings screen.
+* **Conflict Resolution:** Last-Write-Wins (LWW) based on server timestamp, overwriting older version while maintaining server-side revision history (per Q21).
+* **Deletion Policy (Recycle Bin):** Soft delete by default; deleted notes are moved to a Trash / Recycle Bin with a manual emptying mechanism (per Q21).
+* **Attachment Constraints:** Maximum 25 MB per attachment file (per Q22).
+* **Offline Caching:** Full local cache by default (all notes, `.cmn` packages, and attachments stored locally) with an on-demand download toggle in settings for low-storage devices (per Q23).
 
 ### 2.5 Security & End-to-End Encryption (E2EE)
-* **Authentication:** Ktor Authentication using JWT tokens (access + refresh token rotation) and optional biometric unlock (Touch ID / Face ID / Android BiometricPrompt).
+* **Authentication:** Ktor Authentication using JWT tokens (access + refresh token rotation) with BCrypt password hashing; email/password first with extensible OAuth2 architecture (per Q18).
 * **Zero-Knowledge Protected Notes:**
-  * Individual notes or folders encrypted with client-side keys derived via Argon2id from a user-supplied personal vault passphrase.
-  * Ciphertext payload: Authenticated AES-GCM-256 with unique 96-bit IV per save.
-  * Server has strictly zero visibility into note title, content, or attachments for protected notes.
+  * Client-side keys derived via Argon2id from a user-supplied personal vault passphrase.
+  * Ciphertext payload: Authenticated AES-GCM-256 with unique 96-bit IV per note save.
+  * **Emergency Recovery Kit:** 12-word BIP-39 mnemonic seed phrase or 256-bit recovery code generated during vault setup (per Q15).
+  * **Biometric Unlock:** Optional biometric authentication (Touch ID / Face ID / Android BiometricPrompt) to decrypt the vault key from hardware Keystore/Keychain (per Q16).
+  * **Search Privacy:** Title-only search. Note titles remain unencrypted metadata in the JSON index for fast searching, while note body, vector drawings, and attachments are strictly encrypted (per Q17).
 
 ### 2.6 Real-Time Collaboration & Sharing
-* **Room-based WebSockets:** Ktor WebSockets channels for active note sessions.
-* **Presence & Collaborative Cursors:** Broadcast collaborator cursor coordinates, active selections, and stroke drawing status.
-* **Granular Permissions:** Read-only (Viewer), Commenter, and Read/Write (Editor) access tiers.
+* **Text Editing Concurrency:** Server-authoritative line/block operational delta broadcasting via Ktor WebSockets for MVP (per Q24).
+* **Handwritten Notes Concurrency:** Strictly single-editor at a time (exclusive editing lock). Collaborators see the canvas in read-only mode; no simultaneous stroke editing (per Q25).
+* **Sharing Model:** Strictly between registered accounts on the server; external sharing is accomplished via exporting to downloadable common files (.pdf, .docx, .html) (per Q26).
 
 ### 2.7 Import & Export Pipeline
-* **Export Engine:**
-  * Markdown/Text notes exported to `.docx`, `.pdf`, `.html`, `.rtf`, `.txt`.
-  * Handwritten notes exported to `.pdf` (vector or flattened raster), `.png`, `.jpeg`.
-* **Import Engine:**
-  * Ingestion of `.docx`, `.doc`, `.pdf` (text extraction and canvas backdrop), `.html`, `.txt`, and `.md`.
+* **PDF Generation:** Delegated to a server-side headless generation worker (OpenPDF / JVM) via API call for pixel-perfect, identical cross-platform rendering (per Q27).
+* **Word (.docx) Export:** Text notes exported as formatted Word documents (with headings, styles, and embedded images); Handwritten notes exported with high-resolution page raster snapshots embedded in the `.docx` (per Q28).
+* **Vector Export:** Handwritten notes exportable to standard SVG (per Q11).
+* **Import Engine:** Ingestion of `.docx`, `.pdf` (text extraction and canvas backdrop), `.html`, `.txt`, and `.md`.
 
 ---
 
@@ -128,127 +143,77 @@ gantt
     title Notes Alltogether Implementation Roadmap
     dateFormat  YYYY-MM-DD
     section Phase 0: Foundations
-    Domain Model & Shared Protocols       :p0_1, 2026-10-01, 7d
-    Design Tokens & Navigation Blueprint :p0_2, after p0_1, 7d
+    Common Models (:common-models module) :p0_1, 2026-10-01, 7d
+    Navigation & Material 3 Theme Tokens  :p0_2, after p0_1, 7d
     section Phase 1: Text Editor Core
-    Obsidian UI Scaffold (Ribbon/Panes)  :p1_1, after p0_2, 10d
-    Source & Reading Markdown Engines    :p1_2, after p1_1, 10d
-    Live Preview WYSIWYG & Attachments   :p1_3, after p1_2, 14d
+    Obsidian UI Scaffold (Ribbon/Sidebar):p1_1, after p0_2, 10d
+    Pluggable Markdown Engines (Q5)       :p1_2, after p1_1, 10d
+    Live Preview, Wikilinks & Attachments :p1_3, after p1_2, 12d
     section Phase 2: Handwritten Canvas
-    Canvas Skia Engine & Input Dispatch  :p2_1, after p0_2, 14d
-    Drawing Tools, Eraser & Shapes       :p2_2, after p2_1, 10d
-    Multi-layer System & .cmn Container  :p2_3, after p2_2, 12d
-    section Phase 3: Security & Storage
-    Local KMP Database & File Vault      :p3_1, after p1_3, 10d
-    E2EE Engine (Argon2 + AES-GCM)       :p3_2, after p3_1, 10d
+    Canvas Skia Engine & Spline Smoothing:p2_1, after p0_2, 12d
+    Drawing Tools, Eraser, Snapping & S-Pen:p2_2, after p2_1, 10d
+    Multi-layer System, .cmn & SVG Export:p2_3, after p2_2, 12d
+    section Phase 3: Storage & Security
+    Lightweight JSON Index & Sandboxing   :p3_1, after p1_3, 8d
+    E2EE Vault (Argon2 + AES-GCM + BIP-39):p3_2, after p3_1, 10d
+    Biometric Keystore/Keychain Adapter   :p3_3, after p3_2, 6d
     section Phase 4: Server & Sync
-    Ktor Auth & REST Sync Gateway        :p4_1, after p3_1, 14d
-    Delta Sync & Conflict Management     :p4_2, after p4_1, 10d
+    Ktor Auth (JWT/BCrypt) & REST Gateway :p4_1, after p3_1, 12d
+    Delta Sync, LWW & Recycle Bin         :p4_2, after p4_1, 10d
     section Phase 5: Collab & Export
-    Real-Time WebSocket Collaboration    :p5_1, after p4_2, 14d
-    Multi-format Export & Import Engine  :p5_2, after p5_1, 12d
+    Real-Time WebSocket Gateway (Lock/Delta):p5_1, after p4_2, 12d
+    Server-side PDF (OpenPDF) & DOCX (POI):p5_2, after p5_1, 10d
 ```
 
-### Phase 0: Architecture, Shared Common Models & Design Setup
-- Establish shared data models (`Note`, `NoteMetadata`, `Stroke`, `Layer`, `Manifest`, `SyncPacket`) between client and server.
-- Establish UI typography, theming tokens, icon suites, and multiplatform navigation framework.
-
-### Phase 1: Local Text Editor Core (Obsidian UX)
-- Build the 3-column responsive layout (Ribbon, Left Sidebar, Editor Canvas, Right Sidebar).
-- Implement responsive viewport adaptors (desktop/tablet multi-pane vs phone/folded drawer layout).
-- Integrate Markdown parsing, syntax highlighting, and Live Preview rendering.
-- Implement the `.attachments/` folder workflow and clipboard paste/drag-and-drop.
-
-### Phase 2: Handwritten Canvas Engine (Samsung Notes UX)
-- Implement multiplatform Skia Canvas with zoom/pan and vector stroke rendering.
-- Implement Pen, Pencil, Calligraphy Brush, and Vector Path Eraser.
-- Implement geometric shape recognition and snapping.
-- Build multi-layer manager (raster images vs vector strokes).
-- Implement `.cmn` compound container packager/unpacker (`manifest.json` + binary strokes + raster assets).
-
-### Phase 3: Local Persistence, File Management & E2EE Vault
-- Integrate SQLDelight/Room KMP for note index and tags.
-- Implement local file-system repository with support for standard `.md`, `.txt`, `.rtf`, and `.cmn`.
-- Implement client-side Argon2id key derivation and AES-GCM-256 encryption for protected notes.
-
-### Phase 4: Backend Infrastructure & Cloud Synchronization
-- Implement Ktor backend authentication (JWT tokens, password hashing, user registration).
-- Implement REST API for note metadata, version tracking, and binary chunk uploads.
-- Build client background sync worker with manual trigger and configurable periodic sync.
-- Implement conflict handling with automatic side-by-side branch generation.
-
-### Phase 5: Real-Time Collaboration & Sharing
-- Implement Ktor WebSocket rooms for concurrent document editing.
-- Implement operational delta broadcast for text and canvas strokes.
-- Add user presence indicators and collaborative cursors.
-
-### Phase 6: Import / Export Engine & Cross-Platform Hardening
-- Implement export pipelines (`.docx`, `.pdf`, `.jpeg`, `.png`, `TextBundle`).
-- Implement import pipelines (`.docx`, `.pdf`, `.html`, `.md`).
-- Validate responsive transitions across Android phones, foldables, tablets, iOS, Desktop, and Wasm.
-
 ---
 
-## 4. Gap Analysis: Prerequisites & Missing Enablers
-
-Before development can proceed at full velocity, several foundational assets, integrations, and tools must be set up:
-
-| Domain | Missing Enabler / Prerequisite | Action Required |
-| :--- | :--- | :--- |
-| **Design & UI/UX** | **Figma Design System & MCP Connection** | Connect Figma MCP server to inspect component tokens, responsive breakpoint behaviors, toolbar icons, and canvas UI kits. |
-| **UI Specifications** | **Screen Flow & Navigation Blueprint** | Formalize navigation graph (Navigation Compose Multiplatform / Decompose) including drawer behaviors for foldable devices. |
-| **Development Agents** | **Specialized Antigravity Subagents** | Create specialized subagents in `.agents/agents/`:<br>- `editor-architect` (Markdown & WYSIWYG)<br>- `canvas-graphics-specialist` (Skia/Compose Canvas)<br>- `crypto-security-engineer` (E2EE & Key Store)<br>- `sync-backend-engineer` (Ktor WebSockets & DB) |
-| **Custom Skills** | **Project-Specific Antigravity Skills** | Author dedicated skills in `.agents/skills/`:<br>- `compose-canvas-drawing` (handling drawing pipelines & Skia paths)<br>- `crypto-vault` (cross-platform crypto primitives)<br>- `cmn-container-format` (ZIP and binary packing specifications) |
-| **Data Contracts** | **Common Module Shared Library** | Extract data models and DTOs from `commonFiles` into a shared Gradle module (`common-models`) consumed by both `notesClientApp` and `notesServer`. |
-| **Collab Protocol** | **Conflict & Real-time Sync Specification** | Select and specify real-time protocol: CRDT (e.g. Yjs / Automerge port) vs OT vs WebSocket-based stroke/delta broadcasting. |
-| **Export Engines** | **Multiplatform Rendering Libraries** | Select cross-platform PDF and DOCX generation libraries suitable for Kotlin Multiplatform / JVM. |
-
----
-
-## 5. 30 Clarifying Questions for Initial Implementation
+## 4. Architectural Decisions Register (All 30 Resolved Questions)
 
 ### A. General Architecture & Cross-Platform Priorities
-1. **Platform Release Tier:** Which platform is the MVP primary target: Android (tablets/foldables/phones), Desktop (Windows/macOS/Linux), iOS, or Web/Wasm?
-2. **Shared Code Structure:** Should we convert `commonFiles` into a shared Kotlin Multiplatform Gradle module (`:common-models`) to share DTOs between `notesClientApp` and `notesServer`?
-3. **Navigation Framework:** Do you prefer Jetpack Compose Navigation Multiplatform, Decompose, Voyager, or a custom stack router?
-4. **Minimum Supported Versions:** What are the minimum OS targets (e.g., Android 8.0+ / API 26+, iOS 15+, JVM 17+)?
+1. **Platform Release Tier:** **Android first** (API 28+, optimized for tablets, foldables, and phones), then Desktop (JVM 17/21) and iOS (16.0+).
+2. **Shared Code Structure:** Create a dedicated shared Kotlin Multiplatform Gradle module (`:common-models`) used by both `notesClientApp` and `notesServer`.
+3. **Navigation Framework:** Jetpack Navigation Compose Multiplatform (`org.jetbrains.androidx.navigation:navigation-compose`).
+4. **Minimum Supported Versions:** Android API 28 (Android 9.0+), iOS 16.0+, JVM 17/21.
 
 ### B. Text Editor Module (Obsidian UX)
-5. **WYSIWYG Engine Choice:** For Live Preview mode, should we implement a custom Compose rich-text AST parser (e.g., based on multiplatform Markdown parsers like `multiplatform-markdown-renderer`) or build a custom `AnnotatedString` / `VisualTransformation` pipeline?
-6. **Tabs Behavior:** On mobile and compact foldables, should tab support be disabled in favor of a single active note with a fast note switcher (modal palette), or should horizontal tab scrolling be maintained?
-7. **Action Toolbar Persistence:** Should user toolbar customization (pinned vs overflow actions) be synced per-user to the server or saved strictly in local device preferences?
-8. **Tags System:** Should tags support hierarchical nesting (e.g., `#project/phase1/todo`) or only flat tags?
-9. **Internal Note Linking (Wikilinks):** Are Obsidian-style wikilinks (`[[Note Name]]`) required in the initial release, or should we strictly support standard Markdown links (`[text](url)`)?
+5. **WYSIWYG Engine Choice:** Pluggable engine architecture:
+   - **Default:** `org.jetbrains.markdown` + `multiplatform-markdown-renderer` (Option 1).
+   - **Secondary Plugin:** `com.halilibo.compose-richtext` (Option 3).
+   - Selectable by the user in app settings.
+6. **Tabs Behavior:** **No tabs on any screen**; unified workspace with collapsible sidebar and modal Quick Switcher palette (`Cmd+O`/`Ctrl+O`).
+7. **Action Toolbar Persistence:** Local device preferences first via DataStore (`androidx.datastore`), with optional backup to user profile on the server.
+8. **Tags System:** Hierarchical nested tags (e.g., `#project/phase1/todo`) with collapsible tree view in the sidebar.
+9. **Internal Note Linking (Wikilinks):** Support both standard Markdown links `[text](url)` and Obsidian-style wikilinks `[[Note Name]]` with auto-complete popup.
 
 ### C. Handwritten Notes Module & Canvas Engine (Samsung Notes UX)
-10. **Stroke Smoothing & Interpolation:** Should the canvas implement Catmull-Rom spline or Bezier curve smoothing for drawn points to achieve fluid, natural ink?
-11. **Vector Serialization Format:** Should vector strokes inside the `.cmn` container be stored as lightweight JSON coordinate arrays or standardized SVG strings?
-12. **Stylus Pressure & Tilt:** Should pen stroke thickness dynamically vary based on stylus pressure and tilt sensors on supported hardware (e.g., S-Pen, Apple Pencil)?
-13. **Shape Snapping Behavior:** Should geometric shape recognition occur automatically on stroke completion (drawing a circle and holding) or via a dedicated shape tool mode?
-14. **Canvas Extent & Pages:** Is the handwritten canvas an infinite 2D plane, a vertically continuous infinite roll, or fixed-dimension paginated sheets (e.g., A4 / US Letter)?
+10. **Stroke Smoothing & Interpolation:** Implement Catmull-Rom / Bezier spline interpolation for fluid, natural ink lines.
+11. **Vector Serialization Format:** Compact JSON coordinate arrays inside `.cmn` container (points, pressure, timestamp, tool type, color, stroke width) via `kotlinx.serialization`, with full support for export to standardized SVG.
+12. **Stylus Pressure & Tilt:** Dynamically modulate stroke thickness and opacity based on stylus pressure and tilt sensors on supported hardware (S-Pen, Apple Pencil) with fallback to uniform stroke on touch/mouse.
+13. **Shape Snapping Behavior:** Both a dedicated shape insertion tool in the toolbar + auto-snapping gesture (draw roughly and hold for 0.5s to snap).
+14. **Canvas Extent & Pages:** Vertically continuous scrolling page roll with visual page break dividers.
 
 ### D. Security, Passwords & End-to-End Encryption (E2EE)
-15. **Vault Passphrase Recovery:** Is E2EE strictly zero-knowledge (loss of passphrase results in permanent data loss), or should an emergency recovery key / mnemonic seed phrase be generated?
-16. **Biometric Integration:** Should biometric authentication (fingerprint / Face unlock) act as an encrypted local keystore unlocker for the E2EE passphrase?
-17. **Search on Encrypted Notes:** Are protected notes excluded from global search, or should a local encrypted search index be decrypted into memory upon unlocking the vault?
-18. **Authentication Provider:** Will authentication be standard email/password, or should we include social providers (Google, Apple, GitHub) or passkeys?
+15. **Vault Passphrase Recovery:** Zero-Knowledge with emergency recovery kit: Generate a 12-word BIP-39 mnemonic seed phrase or 256-bit recovery code during vault setup.
+16. **Biometric Integration:** Optional biometric unlock (Touch ID / Face ID / Android BiometricPrompt) securely decrypting the vault key from hardware Keystore/Keychain.
+17. **Search on Encrypted Notes:** Title-only search. Note titles remain unencrypted metadata in the JSON index for fast searching, while note body, vector drawings, and attachments are strictly AES-GCM-256 encrypted.
+18. **Authentication Provider:** Email/Password first for MVP, with extensible OAuth2 architecture ready for Google and Apple Sign-In.
 
 ### E. Storage, Synchronization & Conflict Resolution
-19. **Local Database Engine:** For local cache and metadata indexing, do you prefer SQLDelight or Room Multiplatform?
-20. **Sync Triggering Strategy:** Should background automatic sync occur on a fixed timer (e.g., every 60 seconds), on document change debounce, or strictly on app lifecycle events (focus loss / background)?
-21. **Conflict Resolution Preference:** In the event of offline conflict, should the system automatically create a branch file (`Title (Conflict).md`), or present an interactive side-by-side diff resolution screen?
-22. **Attachment Sync Limits:** What is the maximum permitted attachment size for image files when syncing to the server?
-23. **Data Pruning & Offline Retention:** Should all user notes be cached locally in full (attachments included), or should large attachments download on demand?
+19. **Local Database Engine:** **Custom lightweight JSON file index on the filesystem** without an embedded SQL database (Room and SQLDelight rejected for client).
+20. **Sync Triggering Strategy:** Hybrid model: Debounce after editing (5s) + on app lifecycle events (backgrounding) + manual sync button + configurable periodic timer in settings.
+21. **Conflict Resolution Preference:** Last-Write-Wins (LWW) based on server timestamp with server-side revision history. For deletion: Soft delete to a **Recycle Bin** with a manual emptying mechanism.
+22. **Attachment Sync Limits:** Maximum 25 MB per attachment file.
+23. **Data Pruning & Offline Retention:** Full local cache by default with an on-demand download toggle in settings for low-storage devices.
 
 ### F. Real-Time Collaboration & Sharing
-24. **Concurrency Protocol:** For simultaneous text editing, should we use operational CRDTs (such as Y-Kotlin / Automerge) or a lightweight server-authoritative operational lock/delta mechanism?
-25. **Handwritten Collab Sync:** For handwritten notes, should collaborators see strokes being drawn in real-time point-by-point, or only after the stroke is completed (`UP` gesture event)?
-26. **Public vs Registered Sharing:** Can a note be shared via a public web link (read-only view for non-registered users), or is sharing restricted exclusively to registered accounts?
+24. **Concurrency Protocol:** Server-authoritative line/block operational delta broadcasting via WebSockets for MVP.
+25. **Handwritten Collab Sync:** Strictly single-editor at a time (exclusive editing lock). Collaborators see the canvas in read-only mode; no simultaneous stroke editing.
+26. **Public vs Registered Sharing:** Exclusively between registered accounts on the server; external sharing via export to common files to download (.pdf, .docx, .html).
 
 ### G. Import, Export & File System Interoperability
-27. **PDF Generation Location:** Should PDF generation be processed locally on the client (using platform graphics/Skia) or delegated to a server-side headless worker for pixel-perfect fidelity?
-28. **Word (.doc/.docx) Export Scope:** For `.docx` export, does this apply only to text notes, or should handwritten notes also be embedded as rasterized high-resolution images within the document?
-29. **External Folder Binding:** Should the client be capable of opening and watching an arbitrary existing directory on the user's hard drive (like Obsidian vaults), or work strictly inside the app's sandboxed storage?
+27. **PDF Generation Location:** Server-side headless generation worker (OpenPDF / JVM) via API call for identical cross-platform output.
+28. **Word (.docx) Export Scope:** Formatted Word document for text notes; handwritten notes embedded as high-resolution raster page snapshots.
+29. **External Folder Binding:** App-managed sandboxed storage by default, with import/export to external folders.
 
 ### H. Tooling, Design Workflow & AI Setup
-30. **Figma MCP Integration:** Do you currently have a Figma design link and API access token available for configuring the Figma MCP server in Antigravity?
+30. **Figma MCP Integration:** Material 3 code-first UI without external Figma dependency (Figma MCP postponed).
