@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Added
 - Initial project structure for Ktor Server.
+- Synchronized common domain models and DTOs (Note, InkStroke, CanvasLayer, CmnManifest, NoteMetadata, SyncDTOs) with client application.
 - Routing, status pages, content negotiation, and CORS configuration.
 - GitHub Actions CI/CD workflows for PR validation, AI code review, and release automation.
 
