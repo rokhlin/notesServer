@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "com.notes"
-version = "0.0.1"
+version = (findProperty("app.version") as? String) ?: "0.0.1"
 
 repositories {
     mavenCentral()
