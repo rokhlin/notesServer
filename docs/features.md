@@ -143,7 +143,7 @@ gantt
     title Notes Alltogether Implementation Roadmap
     dateFormat  YYYY-MM-DD
     section Phase 0: Foundations
-    Common Models (:common-models module) :p0_1, 2026-10-01, 7d
+    Common Models (common-models module)  :p0_1, 2026-10-01, 7d
     Navigation & Material 3 Theme Tokens  :p0_2, after p0_1, 7d
     section Phase 1: Text Editor Core
     Obsidian UI Scaffold (Ribbon/Sidebar):p1_1, after p0_2, 10d
