@@ -1,6 +1,7 @@
 package com.notes.server.plugins
 
 import com.notes.server.routes.authRouting
+import com.notes.server.routes.collabWebSocketRouting
 import com.notes.server.routes.notesRouting
 import com.notes.server.routes.syncRouting
 import io.ktor.server.application.*
@@ -19,6 +20,7 @@ fun Application.configureRouting() {
 
         authRouting()
         syncRouting()
+        collabWebSocketRouting()
         notesRouting()
     }
 }

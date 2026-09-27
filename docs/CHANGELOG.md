@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Implemented Ktor Auth Gateway with JWT access & refresh token rotation and BCrypt salted password hashing (`POST /api/v1/auth/register`, `POST /api/v1/auth/login`, `POST /api/v1/auth/refresh`, and protected `GET /api/v1/auth/me`).
 - Implemented Delta Sync protocol (`POST /api/v1/sync`) with timestamp watermark filtering, Last-Write-Wins (LWW) conflict resolution, and automatic revision history tracking (`GET /api/v1/notes/{id}/revisions`).
 - Implemented Soft-Delete Recycle Bin (`GET /api/v1/trash`, `POST /api/v1/trash/{id}/restore`, `DELETE /api/v1/trash/{id}`, `DELETE /api/v1/trash`).
+- Implemented Real-Time Collaboration WebSocket Gateway (`/api/v1/ws/notes/{noteId}`) with multi-client co-presence, operational text delta broadcasting, and single-editor exclusive canvas locking (ADR Q25).
 - GitHub Actions CI/CD workflows for PR validation, AI code review, and release automation.
 
 ## [0.0.1] - 2026-09-26
