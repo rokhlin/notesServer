@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
+- Added comprehensive living system architecture document (`docs/system_architecture.md`) detailing Ktor server pipeline, JWT auth flows, delta sync with LWW conflict resolution, WebSocket co-presence and canvas locking, headless PDF/DOCX exporters, and PostgreSQL Exposed database schema.
 - Initial project structure for Ktor Server.
 - Synchronized common domain models and DTOs (Note, InkStroke, CanvasLayer, CmnManifest, NoteMetadata, SyncDTOs) with client application.
 - Routing, status pages, content negotiation, and CORS configuration.

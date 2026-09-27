@@ -34,8 +34,12 @@ The root of the project must constantly maintain a `docs/` directory containing 
 - When instructed to fix a bug, the AI must formulate a troubleshooting and resolution plan.
 - After fixing, the AI must check off the item (`[x]`), adjust `system_architecture.md` if the fix required architectural shifts, and document the fix in `Changelog.md` under the `[Unreleased]` -> `### Fixed` section.
 
-## 5. System Architecture & Diagramming Skill (`system_architecture.md`)
-- This document must remain the single source of truth and be updated synchronously with any codebase changes (business logic, modules, APIs).
+## 5. System Architecture & Lifecycle Standard (`system_architecture.md`)
+- **Single Source of Architectural Truth**: This document must remain the single source of truth for application architecture, runtime components, and data protocols.
+- **Three-Stage Lifecycle**:
+  1. **Initial Scaffolding**: Must be generated immediately when tech stack and initial vision are identified during project initiation/scaffolding (`project-scaffolding-architect` / `existing-project-onboarding`).
+  2. **Phase Synthesis**: Deepened with complete data models, contracts, and interaction flows during architectural blueprinting (`system-architecture-analyst`).
+  3. **Continuous Sync**: Synchronously updated upon feature completion by the Acceptance Manager (`acceptance-manager`).
 - **Diagramming Skill:** The AI must seamlessly generate and maintain architecture charts, sequence diagrams, and flowcharts directly inside the Markdown file using **Mermaid.js** syntax. No external image generation is required; rely exclusively on Mermaid blocks (````mermaid ````).
 
 ## 6. Release Cycle and Changelog Standard
