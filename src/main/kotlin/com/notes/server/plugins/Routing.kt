@@ -2,6 +2,7 @@ package com.notes.server.plugins
 
 import com.notes.server.routes.authRouting
 import com.notes.server.routes.notesRouting
+import com.notes.server.routes.syncRouting
 import io.ktor.server.application.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
@@ -17,6 +18,7 @@ fun Application.configureRouting() {
         }
 
         authRouting()
+        syncRouting()
         notesRouting()
     }
 }

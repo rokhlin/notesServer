@@ -19,5 +19,7 @@ data class Note(
     val isEncrypted: Boolean = false,
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis(),
-    val version: Long = 1L
+    val version: Long = 1L,
+    val isDeleted: Boolean = false,
+    val deletedAt: Long? = null
 )
