@@ -28,6 +28,8 @@ dependencies {
     implementation(libs.ktor.server.auth.jwt)
     implementation(libs.ktor.server.websockets)
     implementation(libs.jbcrypt)
+    implementation(libs.openpdf)
+    implementation(libs.poi.ooxml)
     implementation(libs.logback.classic)
     implementation(libs.kotlinx.serialization.json)
 
