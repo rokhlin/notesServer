@@ -2,6 +2,7 @@ package com.notes.server
 
 import com.notes.server.plugins.configureHTTP
 import com.notes.server.plugins.configureRouting
+import com.notes.server.plugins.configureSecurity
 import com.notes.server.plugins.configureSerialization
 import io.ktor.server.application.*
 import io.ktor.server.engine.*
@@ -18,6 +19,7 @@ fun main() {
 
 fun Application.module() {
     configureSerialization()
+    configureSecurity()
     configureHTTP()
     configureRouting()
 }

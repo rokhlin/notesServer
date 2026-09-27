@@ -24,6 +24,9 @@ dependencies {
     implementation(libs.ktor.server.cors)
     implementation(libs.ktor.server.call.logging)
     implementation(libs.ktor.server.status.pages)
+    implementation(libs.ktor.server.auth)
+    implementation(libs.ktor.server.auth.jwt)
+    implementation(libs.jbcrypt)
     implementation(libs.logback.classic)
     implementation(libs.kotlinx.serialization.json)
 

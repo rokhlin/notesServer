@@ -1,5 +1,6 @@
 package com.notes.server.plugins
 
+import com.notes.server.routes.authRouting
 import com.notes.server.routes.notesRouting
 import io.ktor.server.application.*
 import io.ktor.server.response.*
@@ -15,6 +16,7 @@ fun Application.configureRouting() {
             call.respond(mapOf("status" to "UP"))
         }
 
+        authRouting()
         notesRouting()
     }
 }
