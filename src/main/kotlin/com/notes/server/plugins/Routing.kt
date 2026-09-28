@@ -5,6 +5,7 @@ import com.notes.server.routes.collabWebSocketRouting
 import com.notes.server.routes.exportRouting
 import com.notes.server.routes.notesRouting
 import com.notes.server.routes.syncRouting
+import com.notes.server.routes.userConfigRouting
 import io.ktor.server.application.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
@@ -20,6 +21,7 @@ fun Application.configureRouting() {
         }
 
         authRouting()
+        userConfigRouting()
         syncRouting()
         collabWebSocketRouting()
         exportRouting()
