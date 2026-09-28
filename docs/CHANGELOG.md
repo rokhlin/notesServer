@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
+- Synchronized shared AI provider data contracts (`AiModels.kt`) defining `AiProviderType`, `LocalAiProtocol`, `AiProviderConfig`, `AiSettingsConfig`, `AiMetadataRequest`, and `NoteMetadataFill` for server serialization parity.
 - Implemented per-user `userApiKey` and cryptographically secure `signingSecret` dynamic generation on registration and login.
 - Added User Cloud Configuration routes (`GET /api/v1/user/config`, `PUT /api/v1/user/config`) for storing and synchronizing user storage paths and modular constructor settings.
 - Implemented multi-tenant Cloudflare R2 pre-signed URL generator (`POST /api/v1/user/presigned-url`) enforcing strict `users/{userId}/*` path boundary checks with 403 Forbidden rejection on cross-tenant access.
