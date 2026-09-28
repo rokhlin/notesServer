@@ -36,30 +36,30 @@ data class AiSettingsConfig(
     val maxTagsToGenerate: Int = 5
 ) {
     companion object {
-        fun defaultProviders(): Map<AiProviderType, AiProviderConfig> = mapOf(
+        fun defaultProviders(catalog: AiModelCatalog = AiModelCatalog.defaultCatalog()): Map<AiProviderType, AiProviderConfig> = mapOf(
             AiProviderType.GEMINI to AiProviderConfig(
                 providerType = AiProviderType.GEMINI,
-                primaryModelId = "gemini-3.5-flash",
-                fallbackModelId = "gemini-3.8-flash",
-                baseUrl = "https://generativelanguage.googleapis.com"
+                primaryModelId = catalog.getPrimaryModel(AiProviderType.GEMINI),
+                fallbackModelId = catalog.getFallbackModel(AiProviderType.GEMINI),
+                baseUrl = catalog.providers[AiProviderType.GEMINI]?.baseUrl ?: "https://generativelanguage.googleapis.com"
             ),
             AiProviderType.OPENAI to AiProviderConfig(
                 providerType = AiProviderType.OPENAI,
-                primaryModelId = "gpt-4o-mini",
-                fallbackModelId = "gpt-4o",
-                baseUrl = "https://api.openai.com/v1"
+                primaryModelId = catalog.getPrimaryModel(AiProviderType.OPENAI),
+                fallbackModelId = catalog.getFallbackModel(AiProviderType.OPENAI),
+                baseUrl = catalog.providers[AiProviderType.OPENAI]?.baseUrl ?: "https://api.openai.com/v1"
             ),
             AiProviderType.ANTHROPIC to AiProviderConfig(
                 providerType = AiProviderType.ANTHROPIC,
-                primaryModelId = "claude-3-5-haiku-20241022",
-                fallbackModelId = "claude-3-7-sonnet",
-                baseUrl = "https://api.anthropic.com/v1"
+                primaryModelId = catalog.getPrimaryModel(AiProviderType.ANTHROPIC),
+                fallbackModelId = catalog.getFallbackModel(AiProviderType.ANTHROPIC),
+                baseUrl = catalog.providers[AiProviderType.ANTHROPIC]?.baseUrl ?: "https://api.anthropic.com/v1"
             ),
             AiProviderType.LOCAL_SERVER to AiProviderConfig(
                 providerType = AiProviderType.LOCAL_SERVER,
-                primaryModelId = "llama3.3",
-                fallbackModelId = "llama3.2",
-                baseUrl = "http://localhost:11434",
+                primaryModelId = catalog.getPrimaryModel(AiProviderType.LOCAL_SERVER),
+                fallbackModelId = catalog.getFallbackModel(AiProviderType.LOCAL_SERVER),
+                baseUrl = catalog.providers[AiProviderType.LOCAL_SERVER]?.baseUrl ?: "http://localhost:11434",
                 localProtocol = LocalAiProtocol.OPENAI_COMPATIBLE
             )
         )
