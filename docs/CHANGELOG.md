@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
+- Implemented per-user `userApiKey` and cryptographically secure `signingSecret` dynamic generation on registration and login.
+- Added User Cloud Configuration routes (`GET /api/v1/user/config`, `PUT /api/v1/user/config`) for storing and synchronizing user storage paths and modular constructor settings.
+- Implemented multi-tenant Cloudflare R2 pre-signed URL generator (`POST /api/v1/user/presigned-url`) enforcing strict `users/{userId}/*` path boundary checks with 403 Forbidden rejection on cross-tenant access.
+- Implemented atomic whole-file protected note synchronization endpoint (`PUT /api/v1/sync/protected/{noteId}`) bypassing delta diffing for self-contained `.nap` containers.
+- Enforced collaborative editing prohibition on protected notes in `CollabWebSocketRoutes`, rejecting co-editing attempts with `PROTECTED_NOTE_COLLAB_DISABLED`.
+- Added automated integration test suite `UserConfigAndSecurityTest` validating per-user HMAC signing, R2 path scoping, and atomic whole-file sync.
 - Added comprehensive living system architecture document (`docs/system_architecture.md`) detailing Ktor server pipeline, JWT auth flows, delta sync with LWW conflict resolution, WebSocket co-presence and canvas locking, headless PDF/DOCX exporters, and PostgreSQL Exposed database schema.
 - Initial project structure for Ktor Server.
 - Synchronized common domain models and DTOs (Note, InkStroke, CanvasLayer, CmnManifest, NoteMetadata, SyncDTOs) with client application.
