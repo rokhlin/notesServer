@@ -27,7 +27,9 @@ data class AuthResponse(
     val displayName: String,
     val accessToken: String,
     val refreshToken: String,
-    val expiresIn: Long
+    val expiresIn: Long,
+    val userApiKey: String = "",
+    val signingSecret: String = ""
 )
 
 @Serializable
@@ -41,7 +43,8 @@ data class UserProfile(
     val userId: String,
     val email: String,
     val displayName: String,
-    val createdAt: Long
+    val createdAt: Long,
+    val userApiKey: String = ""
 )
 
 @Serializable
@@ -54,5 +57,7 @@ data class UserAccount(
     val email: String,
     val displayName: String,
     val passwordHash: String,
-    val createdAt: Long
+    val createdAt: Long,
+    val userApiKey: String = "",
+    val signingSecret: String = ""
 )

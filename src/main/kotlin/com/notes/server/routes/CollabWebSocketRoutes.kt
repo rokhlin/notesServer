@@ -21,6 +21,13 @@ fun Route.collabWebSocketRouting(roomManager: CollabRoomManager = defaultCollabR
             return@webSocket
         }
 
+        if (roomManager.isProtected(noteId)) {
+            val errorMsg = CollabServerMessage.ErrorMessage("PROTECTED_NOTE_COLLAB_DISABLED: Protected notes cannot be co-edited")
+            send(Frame.Text(json.encodeToString(CollabServerMessage.serializer(), errorMsg)))
+            close(CloseReason(CloseReason.Codes.VIOLATED_POLICY, "Protected notes collaboration disabled"))
+            return@webSocket
+        }
+
         val room = roomManager.getOrCreateRoom(noteId)
         var registeredClientId: String? = null
 

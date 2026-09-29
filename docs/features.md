@@ -163,6 +163,9 @@ gantt
     section Phase 5: Collab & Export
     Real-Time WebSocket Gateway (Lock/Delta):p5_1, after p4_2, 12d
     Server-side PDF (OpenPDF) & DOCX (POI):p5_2, after p5_1, 10d
+    section Phase 6: AI Integration & Intelligence
+    AI Provider Connections (Gemini, OpenAI, Anthropic, Local):p6_1, after p5_2, 10d
+    Contextual Smart Metadata Filling    :p6_2, after p6_1, 8d
 ```
 
 ---
@@ -217,3 +220,6 @@ gantt
 
 ### H. Tooling, Design Workflow & AI Setup
 30. **Figma MCP Integration:** Material 3 code-first UI without external Figma dependency (Figma MCP postponed).
+31. **Multi-Provider AI Architecture:** Direct client-side connectivity with optional server gateway. Native integration for Google Gemini, OpenAI, Anthropic, and Local LLM Server (Ollama / OpenAI-compatible) configured in System Settings (`SettingsDialog`).
+32. **Contextual Smart Metadata:** Intelligent note context analysis producing suggested tags, concise document summaries, and descriptive titles with interactive preview and selective user confirmation before atomic note persistence.
+

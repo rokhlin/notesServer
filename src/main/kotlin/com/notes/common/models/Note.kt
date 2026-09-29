@@ -17,8 +17,9 @@ data class Note(
     val type: NoteType = NoteType.TEXT,
     val tags: List<String> = emptyList(),
     val isEncrypted: Boolean = false,
-    val createdAt: Long = System.currentTimeMillis(),
-    val updatedAt: Long = System.currentTimeMillis(),
+    val isProtected: Boolean = false,
+    val createdAt: Long = 0L,
+    val updatedAt: Long = 0L,
     val version: Long = 1L,
     val isDeleted: Boolean = false,
     val deletedAt: Long? = null

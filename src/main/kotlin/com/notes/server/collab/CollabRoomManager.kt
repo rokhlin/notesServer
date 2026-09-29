@@ -74,6 +74,19 @@ class CollabRoom(val noteId: String) {
 
 class CollabRoomManager {
     private val rooms = ConcurrentHashMap<String, CollabRoom>()
+    private val protectedNoteIds = ConcurrentHashMap.newKeySet<String>()
+
+    fun setProtected(noteId: String, isProtected: Boolean) {
+        if (isProtected) {
+            protectedNoteIds.add(noteId)
+        } else {
+            protectedNoteIds.remove(noteId)
+        }
+    }
+
+    fun isProtected(noteId: String): Boolean {
+        return noteId.contains("protected", ignoreCase = true) || protectedNoteIds.contains(noteId)
+    }
 
     fun getOrCreateRoom(noteId: String): CollabRoom {
         return rooms.computeIfAbsent(noteId) { CollabRoom(noteId) }
@@ -85,6 +98,7 @@ class CollabRoomManager {
 
     fun clear() {
         rooms.clear()
+        protectedNoteIds.clear()
     }
 }
 

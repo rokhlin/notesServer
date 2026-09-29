@@ -8,6 +8,7 @@ interface UserRepository {
     fun createUser(email: String, passwordHash: String, displayName: String): Result<UserAccount>
     fun findByEmail(email: String): UserAccount?
     fun findById(userId: String): UserAccount?
+    fun findByApiKey(apiKey: String): UserAccount?
     fun saveRefreshToken(refreshToken: String, userId: String)
     fun getUserIdForRefreshToken(refreshToken: String): String?
     fun revokeRefreshToken(refreshToken: String): Boolean
@@ -17,6 +18,7 @@ interface UserRepository {
 class InMemoryUserRepository : UserRepository {
     private val usersById = ConcurrentHashMap<String, UserAccount>()
     private val emailToUserId = ConcurrentHashMap<String, String>()
+    private val apiKeyToUserId = ConcurrentHashMap<String, String>()
     private val refreshTokens = ConcurrentHashMap<String, String>() // refreshToken -> userId
 
     override fun createUser(email: String, passwordHash: String, displayName: String): Result<UserAccount> {
@@ -26,12 +28,17 @@ class InMemoryUserRepository : UserRepository {
         }
 
         val userId = "usr_" + UUID.randomUUID().toString()
+        val userApiKey = "uak_" + UUID.randomUUID().toString().replace("-", "")
+        val signingSecret = "sec_" + UUID.randomUUID().toString().replace("-", "") + UUID.randomUUID().toString().replace("-", "")
+
         val account = UserAccount(
             userId = userId,
             email = normalizedEmail,
             displayName = displayName.ifBlank { normalizedEmail.substringBefore("@") },
             passwordHash = passwordHash,
-            createdAt = System.currentTimeMillis()
+            createdAt = System.currentTimeMillis(),
+            userApiKey = userApiKey,
+            signingSecret = signingSecret
         )
 
         val previous = emailToUserId.putIfAbsent(normalizedEmail, userId)
@@ -40,6 +47,7 @@ class InMemoryUserRepository : UserRepository {
         }
 
         usersById[userId] = account
+        apiKeyToUserId[userApiKey] = userId
         return Result.success(account)
     }
 
@@ -50,6 +58,11 @@ class InMemoryUserRepository : UserRepository {
     }
 
     override fun findById(userId: String): UserAccount? {
+        return usersById[userId]
+    }
+
+    override fun findByApiKey(apiKey: String): UserAccount? {
+        val userId = apiKeyToUserId[apiKey] ?: return null
         return usersById[userId]
     }
 
@@ -68,6 +81,7 @@ class InMemoryUserRepository : UserRepository {
     override fun clear() {
         usersById.clear()
         emailToUserId.clear()
+        apiKeyToUserId.clear()
         refreshTokens.clear()
     }
 }

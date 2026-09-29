@@ -63,6 +63,9 @@ Dependencies are organized across architectural domains:
 | **Database** | Server | **HikariCP** | `com.zaxxer:HikariCP:6.0.0` | High-performance JDBC connection pooling | **Planned (Phase 4)** | Connection pool |
 | **Database** | Server | **Flyway Migrations** | `org.flywaydb:flyway-core:10.20.1` | Automated database schema evolution | **Planned (Phase 4)** | DB migrations |
 | **Object Storage**| Server | **AWS S3 / MinIO SDK** | `aws.sdk.kotlin:s3:1.3.62` | Cloud object storage for large attachments & backups | **Planned (Phase 4)** | Storage for media attachments (up to 25MB) |
+| **AI Integration**| Client | **Ktor Client ContentNegotiation & JSON** | `io.ktor:ktor-client-content-negotiation` | HTTP client serialization for Gemini, OpenAI, Anthropic & Local LLM REST APIs | **Active** | Lightweight multiplatform HTTP without heavy vendor SDKs |
+| **AI Integration**| Client/Common | **Kotlinx Serialization JSON** | `org.jetbrains.kotlinx:kotlinx-serialization-json` | JSON schema parsing and sanitization for AI structured outputs | **Active** | Core multiplatform JSON engine |
+| **AI Integration**| Server | **Ktor Server ContentNegotiation** | `io.ktor:ktor-server-content-negotiation` | Optional server-side proxy route for local LLMs | **Active** | Server-mediated AI fallback |
 
 ---
 
@@ -97,3 +100,6 @@ Dependencies are organized across architectural domains:
 15. **Collaboration Scope (Q24, Q25, Q26):** Server-authoritative WebSocket delta broadcast for text; single-editor exclusive lock for handwritten notes; registered accounts only (external sharing via common file export).
 16. **Export & Storage (Q27, Q28, Q29):** Headless server-side PDF worker; `.docx` export includes formatted text and rasterized canvas pages; sandboxed app storage.
 17. **Design Workflow (Q30):** Material 3 code-first UI without external Figma dependency.
+18. **Multi-Provider AI Architecture (Q31):** Direct client-side connectivity with optional server gateway. Native integration for Google Gemini, OpenAI, Anthropic, and Local LLM Server (Ollama / OpenAI-compatible) configured in System Settings (`SettingsDialog`).
+19. **Contextual Smart Metadata (Q32):** Intelligent note context analysis producing suggested tags, concise document summaries, and descriptive titles with interactive preview and selective user confirmation before atomic note persistence.
+

@@ -203,6 +203,8 @@ sequenceDiagram
     "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
     "refreshToken": "dGhpcy1pcy1hLXJlZnJlc2gtdG9rZW4...",
     "userId": "usr_94a8f1b2",
+    "userApiKey": "uak_94a8f1b2c3d4e5f6",
+    "signingSecret": "sec_8f9a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a",
     "expiresIn": 3600
   }
   ```
@@ -222,6 +224,7 @@ sequenceDiagram
     "userId": "usr_94a8f1b2",
     "username": "alice",
     "email": "alice@example.com",
+    "userApiKey": "uak_94a8f1b2c3d4e5f6",
     "createdAt": 1727438400000
   }
   ```
@@ -340,6 +343,9 @@ sequenceDiagram
 
 #### `WS /api/v1/ws/notes/{noteId}`
 - **Query Parameter**: `token=<accessToken>`
+- **Protected Note Boundary**: If `roomManager.isProtected(noteId) == true`, connection is immediately rejected:
+  - Dispatches `CollabServerMessage.ErrorMessage("PROTECTED_NOTE_COLLAB_DISABLED: Protected notes cannot be co-edited")`.
+  - Closes connection with `CloseReason.Codes.VIOLATED_POLICY`.
 - **Incoming Messages**:
   - `{"type": "CANVAS_LOCK_REQUEST", "layerId": "layer_01"}`
   - `{"type": "TEXT_OP", "delta": {"retain": 10, "insert": "Hello "}}`
@@ -372,6 +378,52 @@ sequenceDiagram
 - **Success Response (200 OK)**:
   - **Headers**: `Content-Type: application/vnd.openxmlformats-officedocument.wordprocessingml.document`, `Content-Disposition: attachment; filename="Architecture_Blueprint.docx"`
   - **Body**: Binary DOCX byte stream.
+
+### 3.6. User Cloud Configuration & Cloudflare R2 Presigned URLs
+
+#### `GET /api/v1/user/config`
+- **Headers**: `Authorization: Bearer <accessToken>`
+- **Success Response (200 OK)**: Returns caller's `UserCloudConfig`.
+
+#### `PUT /api/v1/user/config`
+- **Headers**: `Authorization: Bearer <accessToken>`, `Content-Type: application/json`
+- **Request Body**: `UserCloudConfig` object. Caller `userId` is enforced server-side.
+- **Success Response (200 OK)**: Returns persisted `UserCloudConfig`.
+
+#### `POST /api/v1/user/presigned-url`
+- **Headers**: `Authorization: Bearer <accessToken>`, `Content-Type: application/json`
+- **Request Body**:
+  ```json
+  {
+    "objectKey": "users/usr_94a8f1b2/notes/confidential.nap",
+    "operation": "PUT"
+  }
+  ```
+- **Multi-Tenant Boundary Check**: Server verifies `objectKey.startsWith("users/$userId/")`.
+- **Success Response (200 OK)**:
+  ```json
+  {
+    "url": "https://r2.notesalltogether.com/users/usr_94a8f1b2/notes/confidential.nap?token=...",
+    "objectKey": "users/usr_94a8f1b2/notes/confidential.nap",
+    "expiresInSeconds": 900
+  }
+  ```
+- **Error Response (403 Forbidden)**: Returned on any cross-tenant key access attempt.
+
+### 3.7. Protected Note Atomic Whole-File Sync API
+
+#### `PUT /api/v1/sync/protected/{noteId}`
+- **Headers**: `Authorization: Bearer <accessToken>`, `Content-Type: text/plain`
+- **Request Body**: Complete raw `.nap` container string.
+- **Processing**: Bypasses delta diff calculation; validates container header and replaces whole note file atomically.
+- **Success Response (200 OK)**:
+  ```json
+  {
+    "status": "SAVED_ATOMIC",
+    "noteId": "note_01",
+    "version": "1"
+  }
+  ```
 
 ---
 

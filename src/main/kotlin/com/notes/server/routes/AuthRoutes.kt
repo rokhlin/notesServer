@@ -69,7 +69,9 @@ fun Route.authRouting(userRepository: UserRepository = defaultUserRepository) {
                         displayName = user.displayName,
                         accessToken = accessToken,
                         refreshToken = refreshToken,
-                        expiresIn = JwtTokenManager.ACCESS_TOKEN_EXPIRATION_SECONDS
+                        expiresIn = JwtTokenManager.ACCESS_TOKEN_EXPIRATION_SECONDS,
+                        userApiKey = user.userApiKey,
+                        signingSecret = user.signingSecret
                     )
                 )
             }.onFailure { error ->
@@ -112,7 +114,9 @@ fun Route.authRouting(userRepository: UserRepository = defaultUserRepository) {
                     displayName = user.displayName,
                     accessToken = accessToken,
                     refreshToken = refreshToken,
-                    expiresIn = JwtTokenManager.ACCESS_TOKEN_EXPIRATION_SECONDS
+                    expiresIn = JwtTokenManager.ACCESS_TOKEN_EXPIRATION_SECONDS,
+                    userApiKey = user.userApiKey,
+                    signingSecret = user.signingSecret
                 )
             )
         }
@@ -181,7 +185,8 @@ fun Route.authRouting(userRepository: UserRepository = defaultUserRepository) {
                         userId = user.userId,
                         email = user.email,
                         displayName = user.displayName,
-                        createdAt = user.createdAt
+                        createdAt = user.createdAt,
+                        userApiKey = user.userApiKey
                     )
                 )
             }

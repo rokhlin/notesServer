@@ -1,0 +1,101 @@
+package com.notes.common.models
+
+import kotlinx.serialization.Serializable
+
+@Serializable
+enum class AiProviderType {
+    GEMINI,
+    OPENAI,
+    ANTHROPIC,
+    LOCAL_SERVER
+}
+
+@Serializable
+enum class LocalAiProtocol {
+    OPENAI_COMPATIBLE,
+    OLLAMA_NATIVE
+}
+
+@Serializable
+data class AiProviderConfig(
+    val providerType: AiProviderType = AiProviderType.GEMINI,
+    val apiKey: String = "",
+    val primaryModelId: String = "gemini-3.5-flash",
+    val fallbackModelId: String? = "gemini-3.8-flash",
+    val isFallbackEnabled: Boolean = true,
+    val baseUrl: String = "https://generativelanguage.googleapis.com",
+    val isEnabled: Boolean = true,
+    val localProtocol: LocalAiProtocol = LocalAiProtocol.OPENAI_COMPATIBLE
+)
+
+@Serializable
+data class AiSettingsConfig(
+    val activeProvider: AiProviderType = AiProviderType.GEMINI,
+    val providers: Map<AiProviderType, AiProviderConfig> = defaultProviders(),
+    val autoSuggestOnNoteCreation: Boolean = false,
+    val maxTagsToGenerate: Int = 5
+) {
+    companion object {
+        fun defaultProviders(catalog: AiModelCatalog = AiModelCatalog.defaultCatalog()): Map<AiProviderType, AiProviderConfig> = mapOf(
+            AiProviderType.GEMINI to AiProviderConfig(
+                providerType = AiProviderType.GEMINI,
+                primaryModelId = catalog.getPrimaryModel(AiProviderType.GEMINI),
+                fallbackModelId = catalog.getFallbackModel(AiProviderType.GEMINI),
+                baseUrl = catalog.providers[AiProviderType.GEMINI]?.baseUrl ?: "https://generativelanguage.googleapis.com"
+            ),
+            AiProviderType.OPENAI to AiProviderConfig(
+                providerType = AiProviderType.OPENAI,
+                primaryModelId = catalog.getPrimaryModel(AiProviderType.OPENAI),
+                fallbackModelId = catalog.getFallbackModel(AiProviderType.OPENAI),
+                baseUrl = catalog.providers[AiProviderType.OPENAI]?.baseUrl ?: "https://api.openai.com/v1"
+            ),
+            AiProviderType.ANTHROPIC to AiProviderConfig(
+                providerType = AiProviderType.ANTHROPIC,
+                primaryModelId = catalog.getPrimaryModel(AiProviderType.ANTHROPIC),
+                fallbackModelId = catalog.getFallbackModel(AiProviderType.ANTHROPIC),
+                baseUrl = catalog.providers[AiProviderType.ANTHROPIC]?.baseUrl ?: "https://api.anthropic.com/v1"
+            ),
+            AiProviderType.LOCAL_SERVER to AiProviderConfig(
+                providerType = AiProviderType.LOCAL_SERVER,
+                primaryModelId = catalog.getPrimaryModel(AiProviderType.LOCAL_SERVER),
+                fallbackModelId = catalog.getFallbackModel(AiProviderType.LOCAL_SERVER),
+                baseUrl = catalog.providers[AiProviderType.LOCAL_SERVER]?.baseUrl ?: "http://localhost:11434",
+                localProtocol = LocalAiProtocol.OPENAI_COMPATIBLE
+            )
+        )
+    }
+
+    fun getActiveConfig(): AiProviderConfig {
+        return providers[activeProvider] ?: AiProviderConfig(providerType = activeProvider)
+    }
+
+    fun updateProvider(config: AiProviderConfig): AiSettingsConfig {
+        return copy(providers = providers + (config.providerType to config))
+    }
+}
+
+@Serializable
+data class AiMetadataRequest(
+    val noteId: String,
+    val title: String,
+    val content: String,
+    val existingTags: List<String> = emptyList(),
+    val maxTags: Int = 5
+)
+
+@Serializable
+data class NoteMetadataFill(
+    val suggestedTitle: String? = null,
+    val suggestedTags: List<String> = emptyList(),
+    val summary: String? = null,
+    val suggestedWikilinks: List<String> = emptyList(),
+    val detectedLanguage: String = "en"
+)
+
+@Serializable
+data class ConnectionTestResult(
+    val isSuccess: Boolean,
+    val latencyMs: Long = 0L,
+    val modelName: String = "",
+    val errorMessage: String? = null
+)

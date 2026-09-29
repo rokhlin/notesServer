@@ -40,6 +40,43 @@ fun Route.syncRouting(syncRepository: SyncRepository = defaultSyncRepository) {
                 call.respond(HttpStatusCode.OK, response)
             }
 
+            put("/sync/protected/{noteId}") {
+                val principal = call.principal<JWTPrincipal>()
+                val userId = principal?.subject
+                if (userId.isNullOrBlank()) {
+                    return@put call.respond(HttpStatusCode.Unauthorized, ErrorResponse("Unauthorized"))
+                }
+
+                val noteId = call.parameters["noteId"] ?: return@put call.respond(
+                    HttpStatusCode.BadRequest,
+                    ErrorResponse("Missing note id")
+                )
+
+                val containerRaw = call.receiveText()
+                if (containerRaw.isBlank()) {
+                    return@put call.respond(HttpStatusCode.BadRequest, ErrorResponse("Empty protected container payload"))
+                }
+
+                val unpacked = runCatching {
+                    com.notes.common.crypto.ProtectedNoteCodec.unpack(containerRaw)
+                }.getOrElse { err ->
+                    return@put call.respond(HttpStatusCode.BadRequest, ErrorResponse("Corrupt protected container: ${err.message}"))
+                }
+
+                val note = com.notes.common.models.Note(
+                    id = noteId,
+                    title = unpacked.metadata.title,
+                    content = containerRaw,
+                    type = unpacked.metadata.type,
+                    isProtected = true,
+                    updatedAt = unpacked.metadata.updatedAt,
+                    version = unpacked.metadata.version
+                )
+                syncRepository.saveNote(userId, note)
+
+                call.respond(HttpStatusCode.OK, mapOf("status" to "SAVED_ATOMIC", "noteId" to noteId, "version" to note.version.toString()))
+            }
+
             route("/trash") {
                 get {
                     val principal = call.principal<JWTPrincipal>()
