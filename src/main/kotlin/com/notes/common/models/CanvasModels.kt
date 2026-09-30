@@ -39,6 +39,31 @@ data class InkStroke(
 )
 
 @Serializable
+data class CanvasShape(
+    val id: String,
+    val type: String, // "STRAIGHT_LINE", "RECTANGLE", "CIRCLE", "ELLIPSE", "TRIANGLE"
+    val x: Float,
+    val y: Float,
+    val width: Float,
+    val height: Float,
+    val colorHex: String = "#4F46E5",
+    val strokeWidth: Float = 3.0f,
+    val lineStyle: String = "SOLID" // "SOLID", "DASHED"
+)
+
+@Serializable
+data class CanvasTextBox(
+    val id: String,
+    val text: String,
+    val x: Float,
+    val y: Float,
+    val width: Float = 180f,
+    val height: Float = 80f,
+    val fontSize: Float = 16f,
+    val colorHex: String = "#000000"
+)
+
+@Serializable
 data class CanvasLayer(
     val id: String,
     val name: String,
@@ -46,7 +71,9 @@ data class CanvasLayer(
     val isVisible: Boolean = true,
     val opacity: Float = 1.0f,
     val layerType: LayerType = LayerType.VECTOR,
-    val strokes: List<InkStroke> = emptyList()
+    val strokes: List<InkStroke> = emptyList(),
+    val shapes: List<CanvasShape> = emptyList(),
+    val textBoxes: List<CanvasTextBox> = emptyList()
 )
 
 @Serializable
